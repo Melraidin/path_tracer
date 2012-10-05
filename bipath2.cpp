@@ -657,8 +657,8 @@ int main(int argc, const char* argv[]) {
     Body right = Body(&right_plane, &right_mat);
 
     Plane top_light_plane = Plane(V3(0.0L, 0.0L, 2.5L), V3(0.0L, 0.0L, -1.0L));
-    Material top_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(1.6L, 1.47L, 1.29L));
-    // Material top_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(1.0L, 0.87L, 0.69L));
+    // Material top_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(1.6L, 1.47L, 1.29L));
+    Material top_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(1.0L, 0.87L, 0.69L));
     // Material top_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(1.1L, 0.97L, 0.79L));
     Body top_light = Body(&top_light_plane, &top_light_mat);
 
@@ -666,13 +666,41 @@ int main(int argc, const char* argv[]) {
     Material front_mat = Material(V3(0.9L, 0.9L, 0.9L));
     Body front = Body(&front_plane, &front_mat);
 
-    Plane top_left_divider_plane = Plane(V3(-1.4L, 4.0L, 2.0L), V3(1.0L, -1.0L, -1.0L).normalize());
+    Plane top_left_divider_plane = Plane(V3(-1.8L, 4.4L, 2.4L), V3(1.0L, -1.0L, -1.0L).normalize());
     Material top_left_divider_mat = Glass(V3(0.0L, 0.8L, 0.0L), 1.0L, 0.2L);
     Body top_left_divider = Body(&top_left_divider_plane, &top_left_divider_mat);
 
     Sphere right_light_sphere = Sphere(V3(1.9L, 3.0L, 2.1L), 0.1L);
-    Material right_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(1.9L, 1.77L, 1.59L));
+    Material right_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(2.0L, 1.87L, 1.69L));
     Body right_light = Body(&right_light_sphere, &right_light_mat);
+
+    Sphere left_light_sphere = Sphere(V3(-1.9L, 3.0L, 2.1L), 0.1L);
+    Material left_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(2.0L, 1.87L, 1.69L));
+    Body left_light = Body(&left_light_sphere, &left_light_mat);
+
+    Sphere right2_light_sphere = Sphere(V3(1.9L, 3.75L, 2.1L), 0.1L);
+    Material right2_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(2.0L, 1.87L, 1.69L));
+    Body right2_light = Body(&right2_light_sphere, &right2_light_mat);
+
+    Sphere left2_light_sphere = Sphere(V3(-1.9L, 3.75L, 2.1L), 0.1L);
+    Material left2_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(2.0L, 1.87L, 1.69L));
+    Body left2_light = Body(&left2_light_sphere, &left2_light_mat);
+
+    Sphere right3_light_sphere = Sphere(V3(1.9L, 2.25L, 2.1L), 0.1L);
+    Material right3_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(2.0L, 1.87L, 1.69L));
+    Body right3_light = Body(&right3_light_sphere, &right3_light_mat);
+
+    Sphere left3_light_sphere = Sphere(V3(-1.9L, 2.25L, 2.1L), 0.1L);
+    Material left3_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(2.0L, 1.87L, 1.69L));
+    Body left3_light = Body(&left3_light_sphere, &left3_light_mat);
+
+    Sphere back_light_sphere = Sphere(V3(-0.63333L, 4.5L, 2.1L), 0.1L);
+    Material back_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(2.0L, 1.87L, 1.69L));
+    Body back_light = Body(&back_light_sphere, &back_light_mat);
+
+    Sphere back2_light_sphere = Sphere(V3(0.63333L, 4.5L, 2.1L), 0.1L);
+    Material back2_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(2.0L, 1.87L, 1.69L));
+    Body back2_light = Body(&back2_light_sphere, &back2_light_mat);
 
     // Plane top_right_divider_plane = Plane(V3(1.4L, 4.0L, 2.0L), V3(-1.0L, -1.0L, -1.0L).normalize());
     // Material top_right_divider_mat = Glass(V3(0.8L, 0.0L, 0.0L), 1.0L, 0.2L);
@@ -683,8 +711,10 @@ int main(int argc, const char* argv[]) {
     Material top_right_divider_mat = Glass(V3(0.8L, 0.0L, 0.0L), 1.0L, 0.2L);
     Body top_right_divider = Body(&top_right_divider_plane, &top_right_divider_mat);
 
-    scene.body_count = 15;
-    Body* bodies[] = {&glass, &chrome, &green, &red, &blue, &pyramid, &floor, &back, &left, &right, &top_light, &front, &top_left_divider, &top_right_divider, &right_light};
+    scene.body_count = 21;
+    Body* bodies[] = {&glass, &chrome, &green, &red, &blue, &pyramid, &floor, &back, &left, &right, &top_light, &front,
+                      &top_left_divider, &top_right_divider, &right_light, &left_light, &back_light, &back2_light, &right2_light, &left2_light,
+                      &right3_light, &left3_light};
     // scene.body_count = 14;
     // Body* bodies[] = {&glass, &chrome, &green, &red, &blue, &pyramid, &floor, &back, &left, &right, &top_light, &front, &top_left_divider, &top_right_divider};
     scene.objects = bodies;
