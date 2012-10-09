@@ -467,7 +467,7 @@ int main(int argc, const char* argv[]) {
     }
 
     int width = strtol(argv[1], NULL, 10);
-    int height = strtol(argv[1], NULL, 10);
+    int height = strtol(argv[2], NULL, 10);
     int iterations = strtol(argv[3], NULL, 10);
     int thread_count = strtol(argv[4], NULL, 10);
 

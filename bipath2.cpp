@@ -593,7 +593,7 @@ int main(int argc, const char* argv[]) {
     }
 
     int width = strtol(argv[1], NULL, 10);
-    int height = strtol(argv[1], NULL, 10);
+    int height = strtol(argv[2], NULL, 10);
     int iterations = strtol(argv[3], NULL, 10);
     int thread_count = strtol(argv[4], NULL, 10);
 
@@ -694,6 +694,14 @@ int main(int argc, const char* argv[]) {
     Material left3_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(2.0L, 1.87L, 1.69L));
     Body left3_light = Body(&left3_light_sphere, &left3_light_mat);
 
+    Sphere right4_light_sphere = Sphere(V3(1.9L, 1.5L, 2.1L), 0.1L);
+    Material right4_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(2.0L, 1.87L, 1.69L));
+    Body right4_light = Body(&right4_light_sphere, &right4_light_mat);
+
+    Sphere left4_light_sphere = Sphere(V3(-1.9L, 1.5L, 2.1L), 0.1L);
+    Material left4_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(2.0L, 1.87L, 1.69L));
+    Body left4_light = Body(&left4_light_sphere, &left4_light_mat);
+
     Sphere back_light_sphere = Sphere(V3(-0.63333L, 4.5L, 2.1L), 0.1L);
     Material back_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(2.0L, 1.87L, 1.69L));
     Body back_light = Body(&back_light_sphere, &back_light_mat);
@@ -711,10 +719,10 @@ int main(int argc, const char* argv[]) {
     Material top_right_divider_mat = Glass(V3(0.8L, 0.0L, 0.0L), 1.0L, 0.2L);
     Body top_right_divider = Body(&top_right_divider_plane, &top_right_divider_mat);
 
-    scene.body_count = 21;
+    scene.body_count = 23;
     Body* bodies[] = {&glass, &chrome, &green, &red, &blue, &pyramid, &floor, &back, &left, &right, &top_light, &front,
                       &top_left_divider, &top_right_divider, &right_light, &left_light, &back_light, &back2_light, &right2_light, &left2_light,
-                      &right3_light, &left3_light};
+                      &right3_light, &left3_light, &right4_light, &left4_light};
     // scene.body_count = 14;
     // Body* bodies[] = {&glass, &chrome, &green, &red, &blue, &pyramid, &floor, &back, &left, &right, &top_light, &front, &top_left_divider, &top_right_divider};
     scene.objects = bodies;

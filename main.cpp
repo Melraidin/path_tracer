@@ -3,6 +3,7 @@
 #include <ctime>
 #include <cfloat>
 #include <iostream>
+#include <sstream>
 #include <boost/thread.hpp>
 #include <boost/thread/locks.hpp>
 #include <boost/thread/mutex.hpp>
@@ -394,7 +395,7 @@ public:
             // if the ray is refractedmove the intersection point a bit in
             point = ray.origin.add(ray.direction.muls(mint*1.0000001L));
         } else {
-            // otherwise move it out to prevent problems with doubleing point
+            // otherwise move it out to prevent problems with floating point
             // accuracy
             point = ray.origin.add(ray.direction.muls(mint*0.9999999L));
         }
@@ -406,7 +407,12 @@ public:
 
 void save(V3* buffer, int samples, int width, int height) {
     ofstream myfile;
-    myfile.open ("output.ppm");
+
+    stringstream filename;
+    filename << "output_" << samples << ".ppm";
+    cout << "saving to file \"" << filename.str() << "\"" << endl;
+    // myfile.open("output" + samples + ".ppm");
+    myfile.open(filename.str());
 
     myfile << "P3\n" << width << " " << height << endl << "255\n";
     V3* pixel = buffer;
@@ -449,13 +455,6 @@ void worker(int worker_num, int iterations, Scene* scene, V3* buffer) {
             dst_pixel++;
         }
     }
-
-    // V3* renderer_buffer = renderer_buffer;
-    // for (int i = 0; i < (scene->width * scene->height); i++) {
-    //     buffer->iadd(renderer_buffer->divs((double)iterations));
-    //     buffer++;
-    //     renderer_buffer++;
-    // }
 }
 
 int main(int argc, const char* argv[]) {
@@ -467,7 +466,7 @@ int main(int argc, const char* argv[]) {
     }
 
     int width = strtol(argv[1], NULL, 10);
-    int height = strtol(argv[1], NULL, 10);
+    int height = strtol(argv[2], NULL, 10);
     int iterations = strtol(argv[3], NULL, 10);
     int thread_count = strtol(argv[4], NULL, 10);
 
@@ -497,19 +496,19 @@ int main(int argc, const char* argv[]) {
     Chrome chrome_mat = Chrome(V3(0.8L, 0.8L, 0.8L));
     Body chrome = Body(&chrome_sphere, &chrome_mat);
 
-    Sphere green_sphere = Sphere(V3(-0.2L, 1.6L, -0.4L), 0.1L);
+    Sphere green_sphere = Sphere(V3(-0.15L, 1.55L, -0.4L), 0.1L);
     Glass green_mat = Glass(V3(0.0L, 0.8L, 0.0L), 1.0L, 0.2L);
     Body green = Body(&green_sphere, &green_mat);
 
-    Sphere red_sphere = Sphere(V3(0.0L, 1.11716L, -0.4L), 0.1L);
+    Sphere red_sphere = Sphere(V3(0.0L, 1.187867L, -0.4L), 0.1L);
     Glass red_mat = Glass(V3(0.8, 0.0, 0.0), 1.0, 0.2);
     Body red = Body(&red_sphere, &red_mat);
 
-    Sphere blue_sphere = Sphere(V3(0.2, 1.6, -0.4), 0.1);
+    Sphere blue_sphere = Sphere(V3(0.15, 1.55, -0.4), 0.1);
     Glass blue_mat = Glass(V3(0.0, 0.0, 0.8), 1.0, 0.2);
     Body blue = Body(&blue_sphere, &blue_mat);
 
-    Sphere pyramid_sphere = Sphere(V3(0.0L, 1.4L, -0.28284L), 0.1L);
+    Sphere pyramid_sphere = Sphere(V3(0.0L, 1.4L, -0.28L), 0.1L);
     Glass pyramid_mat = Glass(V3(1.00L, 1.00L, 1.00L), 1.5L, 0.1L);
     Body pyramid = Body(&pyramid_sphere, &pyramid_mat);
 
@@ -529,20 +528,69 @@ int main(int argc, const char* argv[]) {
     Plane right_plane = Plane(V3(1.9L, 0.0L, 0.0L), V3(-1.0L, 0.0L, 0.0L));
     Material right_mat = Material(V3(0.5L, 0.5L, 0.9L));
     Body right = Body(&right_plane, &right_mat);
+
     Plane top_light_plane = Plane(V3(0.0L, 0.0L, 2.5L), V3(0.0L, 0.0L, -1.0L));
     Material top_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(1.6L, 1.47L, 1.29L));
+    // Material top_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(1.0L, 0.87L, 0.69L));
+    // Material top_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(1.1L, 0.97L, 0.79L));
     Body top_light = Body(&top_light_plane, &top_light_mat);
+
     Plane front_plane = Plane(V3(0.0L, -2.5L, 0.0L), V3(0.0L, 1.0L, 0.0L));
     Material front_mat = Material(V3(0.9L, 0.9L, 0.9L));
     Body front = Body(&front_plane, &front_mat);
 
-    Plane top_left_divider_plane = Plane(V3(-1.4L, 4.0L, 2.0L), V3(1.0L, -1.0L, -1.0L).normalize());
+    Plane top_left_divider_plane = Plane(V3(-1.8L, 4.4L, 2.4L), V3(1.0L, -1.0L, -1.0L).normalize());
     Material top_left_divider_mat = Glass(V3(0.0L, 0.8L, 0.0L), 1.0L, 0.2L);
     Body top_left_divider = Body(&top_left_divider_plane, &top_left_divider_mat);
 
-    Sphere right_light_sphere = Sphere(V3(1.9L, 3.0L, 2.1L), 0.1L);
-    Material right_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(1.9L, 1.77L, 1.59L));
+    Sphere right_light_sphere = Sphere(V3(1.9L, 3.625L, 2.1L), 0.1L);
+    Material right_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(2.0L, 1.87L, 1.69L));
     Body right_light = Body(&right_light_sphere, &right_light_mat);
+
+    Sphere left_light_sphere = Sphere(V3(-1.9L, 3.625L, 2.1L), 0.1L);
+    Material left_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(2.0L, 1.87L, 1.69L));
+    Body left_light = Body(&left_light_sphere, &left_light_mat);
+
+    Sphere right2_light_sphere = Sphere(V3(1.9L, 2.75L, 2.1L), 0.1L);
+    Body right2_light = Body(&right2_light_sphere, &right_light_mat);
+    Sphere left2_light_sphere = Sphere(V3(-1.9L, 2.75L, 2.1L), 0.1L);
+    Body left2_light = Body(&left2_light_sphere, &left_light_mat);
+    Sphere right3_light_sphere = Sphere(V3(1.9L, 1.875L, 2.1L), 0.1L);
+    Body right3_light = Body(&right3_light_sphere, &right_light_mat);
+    Sphere left3_light_sphere = Sphere(V3(-1.9L, 1.875L, 2.1L), 0.1L);
+    Body left3_light = Body(&left3_light_sphere, &left_light_mat);
+    Sphere right4_light_sphere = Sphere(V3(1.9L, 1.0L, 2.1L), 0.1L);
+    Body right4_light = Body(&right4_light_sphere, &right_light_mat);
+    Sphere left4_light_sphere = Sphere(V3(-1.9L, 1.0L, 2.1L), 0.1L);
+    Body left4_light = Body(&left4_light_sphere, &left_light_mat);
+    Sphere right5_light_sphere = Sphere(V3(1.9L, 0.125L, 2.1L), 0.1L);
+    Body right5_light = Body(&right5_light_sphere, &right_light_mat);
+    Sphere left5_light_sphere = Sphere(V3(-1.9L, 0.125L, 2.1L), 0.1L);
+    Body left5_light = Body(&left5_light_sphere, &left_light_mat);
+    Sphere right6_light_sphere = Sphere(V3(1.9L, -0.75L, 2.1L), 0.1L);
+    Body right6_light = Body(&right6_light_sphere, &right_light_mat);
+    Sphere left6_light_sphere = Sphere(V3(-1.9L, -0.75L, 2.1L), 0.1L);
+    Body left6_light = Body(&left6_light_sphere, &left_light_mat);
+    Sphere right7_light_sphere = Sphere(V3(1.9L, -1.625, 2.1L), 0.1L);
+    Body right7_light = Body(&right7_light_sphere, &right_light_mat);
+    Sphere left7_light_sphere = Sphere(V3(-1.9L, -1.625L, 2.1L), 0.1L);
+    Body left7_light = Body(&left7_light_sphere, &left_light_mat);
+
+    Sphere back_light_sphere = Sphere(V3(-0.63333L, 4.5L, 2.1L), 0.1L);
+    Material back_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(2.0L, 1.87L, 1.69L));
+    Body back_light = Body(&back_light_sphere, &back_light_mat);
+
+    Sphere back2_light_sphere = Sphere(V3(0.63333L, 4.5L, 2.1L), 0.1L);
+    Material back2_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(2.0L, 1.87L, 1.69L));
+    Body back2_light = Body(&back2_light_sphere, &back2_light_mat);
+
+    Sphere front_light_sphere = Sphere(V3(-0.63333L, -2.5L, 2.1L), 0.1L);
+    Material front_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(2.0L, 1.87L, 1.69L));
+    Body front_light = Body(&front_light_sphere, &front_light_mat);
+
+    Sphere front2_light_sphere = Sphere(V3(0.63333L, -2.5L, 2.1L), 0.1L);
+    Material front2_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(2.0L, 1.87L, 1.69L));
+    Body front2_light = Body(&front2_light_sphere, &front2_light_mat);
 
     // Plane top_right_divider_plane = Plane(V3(1.4L, 4.0L, 2.0L), V3(-1.0L, -1.0L, -1.0L).normalize());
     // Material top_right_divider_mat = Glass(V3(0.8L, 0.0L, 0.0L), 1.0L, 0.2L);
@@ -553,26 +601,63 @@ int main(int argc, const char* argv[]) {
     Material top_right_divider_mat = Glass(V3(0.8L, 0.0L, 0.0L), 1.0L, 0.2L);
     Body top_right_divider = Body(&top_right_divider_plane, &top_right_divider_mat);
 
-    Body* bodies[] = {&glass, &chrome, &green, &red, &blue, &pyramid, &floor, &back, &left, &right, &top_light, &front, &top_left_divider, &top_right_divider, &right_light};
+    scene.body_count = 32;
+    Body* bodies[] = {&glass, &chrome, &green, &red, &blue, &pyramid, &floor, &back, &left, &right, &top_light, &front,
+                      &top_left_divider, &top_right_divider, &right_light, &left_light, &back_light, &back2_light, &right2_light, &left2_light,
+                      &right3_light, &left3_light, &right4_light, &left4_light,
+                      &right5_light, &left5_light, &right6_light, &left6_light, &right7_light, &left7_light,
+                      &front_light, &front2_light};
+    // scene.body_count = 14;
+    // Body* bodies[] = {&glass, &chrome, &green, &red, &blue, &pyramid, &floor, &back, &left, &right, &top_light, &front, &top_left_divider, &top_right_divider};
     scene.objects = bodies;
-    scene.body_count = 15;
 
     V3* buffer = new V3[width * height];
     for (int i = 0; i < (width * height); i++) {
         buffer[i] = V3(0.0L, 0.0L, 0.0L);
     }
 
+    // int iterations_remaining = iterations;
+    // boost::thread** threads = NULL;
+
+    // while (iterations_remaining > 0) {
+    //     int iteration_step = min(10, max((int)((double)iterations_remaining / (double)thread_count), 1));
+    //     cout << "Iterations between output: " << iteration_step << endl;
+
+    //     threads = new boost::thread*[thread_count];
+    //     for (int i = 0; i < thread_count; i++) {
+    //         threads[i] = new boost::thread(boost::bind(&worker, i, iteration_step, &scene, buffer));
+    //         iterations_remaining -= iteration_step;
+    //     }
+
+    //     for (int i = 0; i < thread_count; i++) {
+    //         threads[i]->join();
+    //     }
+
+    //     for (int i = 0; i < thread_count; i++) {
+    //         delete threads[i];
+    //     }
+    
+    //     save(buffer, iterations - iterations_remaining, width, height);
+    // }
+
+    // delete threads;
+
+    // save(buffer, iterations, width, height);
+
     boost::thread** threads = new boost::thread*[thread_count];
     for (int i = 0; i < thread_count; i++) {
-        threads[i] = new boost::thread(boost::bind(&worker, i, iterations / thread_count, &scene, buffer));
+        threads[i] = new boost::thread(boost::bind(&worker, i, (double)iterations / (double)thread_count, &scene, buffer));
     }
 
     for (int i = 0; i < thread_count; i++) {
         threads[i]->join();
     }
-    
-    //worker(iterations, &scene, buffer);
 
+    for (int i = 0; i < thread_count; i++) {
+        delete threads[i];
+    }
+    delete threads;
+    
     save(buffer, iterations, width, height);
 
     delete[] buffer;
