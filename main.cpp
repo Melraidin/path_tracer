@@ -470,11 +470,6 @@ int main(int argc, const char* argv[]) {
     int iterations = strtol(argv[3], NULL, 10);
     int thread_count = strtol(argv[4], NULL, 10);
 
-    // int width = 320;
-    // int height = 240;
-    // int width = 640;
-    // int height = 480;
-
     Scene scene;
     scene.width = width;
     scene.height = height;

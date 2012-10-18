@@ -491,8 +491,9 @@ public:
                 // TODO Only using a single spherical light.
                 // Body* light = this->lights[unifRand(0, this->lights.size() - 1)];
                 Body* light = this->lights[0];
+                V3 shoot_origin;
                 do {
-                    V3 shoot_origin = light->shape->getPointOnSurface();
+                    shoot_origin = light->shape->getPointOnSurface();
                     Ray shoot_ray = Ray(shoot_origin, light->shape->getNormal(shoot_origin).normalize());
                     // cout << shoot_ray.origin.x << ", " << shoot_ray.origin.y << ", " << shoot_ray.origin.z << " -> " <<
                     //     shoot_ray.direction.x << ", " << shoot_ray.direction.y << ", " << shoot_ray.direction.z << endl;
@@ -500,6 +501,8 @@ public:
                 } while (shoot_records.size() == 0);
 
                 V3 final_color;
+                V3 indirect_color;
+                V3 direct_color;
 
                 // cout << "Gather hits: " << gather_records.size() << ", shoot hits: " << shoot_records.size() << endl;
 
@@ -512,31 +515,66 @@ public:
 
                         if (shoot_i < shoot_records.size() - 1) {
                             HitRecord prev_shoot = shoot_records[shoot_i + 1];
-                            // Previous shoot hit was not the shoot origin.
-                            // TODO Very uncertain whether using bounce() as the BRDF is reasonable.
-                            V3 light_brdf = shoot_it->body->material->bounce(
-                                Ray(prev_shoot.hit, shoot_it->hit.sub(prev_shoot.hit).normalize()),
-                                gather_it->hit.sub(shoot_it->hit).normalize());
+                            if (false) {
+                                // // Previous shoot hit was not the shoot origin.
+                                // // TODO Very uncertain whether using bounce() as the BRDF is reasonable.
+                                V3 light_brdf = shoot_it->body->material->bounce(
+                                    Ray(prev_shoot.hit, shoot_it->hit.sub(prev_shoot.hit).normalize()),
+                                    gather_it->hit.sub(shoot_it->hit).normalize());
 
-                            double light_flux = fabs(light_brdf.dot(gather_it->body->shape->getNormal(gather_it->hit)));
+                                double light_flux = fabs(light_brdf.dot(gather_it->body->shape->getNormal(gather_it->hit)));
 
-                            // cout << "Old final: " << final_color << endl;
-                            final_color = final_color.mul(gather_it->body->material->color);
-                            // cout << "Final with gather hit: " << final_color << endl;
-                            final_color.iadd(gather_it->body->material->emission);
-                            // cout << "Final with gather emission: " << final_color << endl;
-                            final_color.iadd(shoot_it->color.muls(light_flux));
-                            // cout << "Final with shoot color: " << final_color << endl;
+                                // cout << "Old final: " << final_color << endl;
+                                final_color = final_color.mul(gather_it->body->material->color);
+                                // cout << "Final with gather hit: " << final_color << endl;
+                                final_color.iadd(gather_it->body->material->emission);
+                                // cout << "Final with gather emission: " << final_color << endl;
+                                final_color.iadd(shoot_it->color.muls(light_flux));
+                                // cout << "Final with shoot color: " << final_color << endl;
 
-                            samples++;
+                                samples++;
+                            } else {
+                                if (checkHit(shoot_it->hit, gather_it->hit, gather_it->body)) {
+                                    indirect_color.iadd(shoot_it->color);
+                                    samples++;
+                                }
+                            }
                         }
+
+                        // if (checkHit(shoot_origin, gather_it->hit, light)) {
+                        //     direct_color = light->material->emission;
+                        // }
                     }
+
+                    // final_color = gather_it->body->material->color.mul(indirect_color);
+                    // final_color = gather_it->body->material->color.mul(indirect_color.iadd(direct_color));
+                    final_color = gather_it->body->material->color.mul(indirect_color.iadd(direct_color)).iadd(gather_it->body->material->emission);
                 }
 
-                buffer[i++].iadd(gather_color);
+                // buffer[i++].iadd(gather_color);
                 // buffer[i++].iadd(final_color.divs(samples));
+                buffer[i++].iadd(final_color);
             }
         }
+    }
+
+    bool checkHit(V3 origin, V3 target, Body* expected) {
+        // Returns true if a ray from origin to target hits nothing in
+        // between except the expected Body.
+        Body* hit = NULL;
+        double mint = DBL_MAX;
+
+        Ray ray = Ray(origin, target.sub(origin));
+
+        for (vector<Body*>::iterator it = scene.objects.begin(); it < scene.objects.end(); it++) {
+            double t = (*it)->shape->intersect(ray);
+            if ((t > 0) && (t <= mint)) {
+                mint = t;
+                hit = *it;
+            }
+        }
+
+        return hit == expected;
     }
 
     V3 trace(Ray ray, int n, vector<HitRecord>* records) {
