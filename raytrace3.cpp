@@ -947,7 +947,7 @@ int main(int argc, const char* argv[]) {
   Body back = Body(&back_rectangle, &back_mat);
   bodies.push_back(&back);
   Material left_mat = Material(V3(0.9L, 0.5L, 0.5L));
-  Rectangle left_rectangle = Rectangle(V3(-1.9L, -2.5L, 2.5L), V3(-1.9L, 4.5L, 2.5L), V3(-1.9L, 4.5L, -0.5L), V3(-1.9L, -2.5L, 2.5L));
+  Rectangle left_rectangle = Rectangle(V3(-1.9L, -2.5L, 2.5L), V3(-1.9L, 4.5L, 2.5L), V3(-1.9L, 4.5L, -0.5L), V3(-1.9L, -2.5L, -0.5L));
   Body left = Body(&left_rectangle, &left_mat);
   bodies.push_back(&left);
   Material right_mat = Material(V3(0.5L, 0.5L, 0.9L));

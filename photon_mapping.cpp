@@ -69,6 +69,11 @@ public:
         return V3(x + v.x, y + v.y, z + v.z);
     }
 
+    double total(void) {
+        // Returns the sum of the components.
+        return this->x + this->y + this->z;
+    }
+
     V3 iadd(V3 v) {
         x += v.x;
         y += v.y;
@@ -112,6 +117,13 @@ public:
         this->y *= s;
         this->z *= s;
         return *this;
+    }
+
+    double power_distance(V3 v) {
+        // Returns the distance between this point and the given point
+        // without converting to real distance. Only useful for
+        // comparison.
+        return pow(this->x - v.x, 2) + pow(this->y - v.y, 2) + pow(this->z - v.z, 2);
     }
 
     V3 divs(double s) {
@@ -162,12 +174,17 @@ public:
     V3 origin;
     V3 direction;
 
+    Ray(void) {}
+
     Ray(V3 iorigin, V3 idirection) {
         origin = iorigin;
         direction = idirection;
     }
 };
 
+std::ostream& operator<<(std::ostream &strm, const Ray &r) {
+    return strm << "Ray(" << r.origin << " -> " << r.direction << ")";
+}
 
 class Camera {
 public:
@@ -339,6 +356,7 @@ public:
         double n_dot_u = normal.dot(r.direction);
 
         if ((n_dot_u > -0.00001L) && (n_dot_u < 0.00001L)) {
+            // cout << "Failed normal test\n";
             return -1.0L;
         }
 
@@ -346,7 +364,9 @@ public:
         double t = n_dot_p0 / n_dot_u;
 
         // Intersection before origin of ray.
-        if (t < 1.0L) {
+        // if (t < 1.0L) {
+        if (t < 0.000001L) {
+            // cout << "Intersection before ray: " << t << endl;
             return -1.0L;
         }
 
@@ -358,6 +378,7 @@ public:
         if ((v1.dot(v4) > 0.0L) && (v3.dot(v5) > 0.0L)) {
             return t;
         } else {
+            // cout << "Intersection outside rectangle\n";
             return -1.0L;
         }
     }
@@ -480,8 +501,10 @@ class Body {
 public:
     Shape* shape;
     Material* material;
+    string name;
 
-    Body(Shape* ishape, Material* imaterial) {
+    Body(string name, Shape* ishape, Material* imaterial) {
+        this->name = name;
         shape = ishape;
         material = imaterial;
     }
@@ -497,12 +520,26 @@ struct Scene {
 };
 
 
+struct PhotonHit {
+    V3 point;
+    V3 flux;
+    V3 incoming;
+
+    PhotonHit(V3 point, V3 flux, V3 incoming) {
+        this->point = point;
+        this->flux = flux;
+        this->incoming = incoming;
+    }
+};
+
+
 class Renderer {
 public:
     Scene scene;
     V3* buffer;
     int pixels;
     vector<Body*> lights;
+    vector<PhotonHit> photon_hits;
 
     Renderer(Scene iscene) {
         scene = iscene;
@@ -540,40 +577,65 @@ public:
         }
     }
 
-    void trace_photons(int photon_count) {
+    V3 get_photon_color(V3 point, V3 eye, int photon_count) {
+        // Get the colour of the point given the number of photons to
+        // check and the direction to the viewer.
+        
+        
+
+        for (Vector<PhotonHit>::iterator it = this->photon_hits.begin(); it < this->photon_hits.end(); it++) {
+            
+        }
+    }
+
+    void trace_all_photons(int photon_count) {
         // Find total light power.
         double total_power = 0.0L;
         for (vector<Body*>::iterator it = this->lights.begin(); it < this->lights.end(); it++) {
-            total_power += it->material.power;
+            // BUGBUG Not sure about treating material's power as a pointer.
+            total_power += (*it)->material->power;
         }
 
         // Find the number of photons for each light we should trace.
-        vector<int> light_photons = vector<int>;
+        vector<int> light_photons = vector<int>();
         for (vector<Body*>::iterator it = this->lights.begin(); it < this->lights.end(); it++) {
-            light_photons.push_back((int)((double)it->material.power / (double)photon_count));
+            light_photons.push_back((int)(((double)(*it)->material->power / total_power) * (double)photon_count));
         }
 
         // For each light's photon count trace each photon.
-        for (vector<int>::iterator p_it = light_photons.begin(),
-                 vector<Body*>::iterator l_it = this->lights.begin();
+        vector<Body*>::iterator l_it = this->lights.begin();
+        for (vector<int>::iterator p_it = light_photons.begin();
              p_it < light_photons.end();
              p_it++,
                  l_it++) {
+            cout << "Tracing " << *p_it << " photons\n";
             for (int i = 0; i < *p_it; i++) {
-                this->trace_photon(*l_it);
+                this->start_photon(**l_it);
             }
         }
     }
 
-    void trace_photon(Body light) {
+    void start_photon(Body light) {
         // Note that it's assumed that the scene is closed around the
         // camera. This means that if a photon does not hit any object
         // then it was shot out of the scene and we'll retrace it.
-        V3 light_origin = light->shape->getPointOnSurface();
-        Ray ray = Ray(light_origin, light->shape->getNormal(light_origin));
 
-        int bounces = 0;
-        V3 flux = V3(1.0L, 1.0L, 1.0L);
+        Ray ray;
+
+        // Trace until we find a path with at least one hit to account
+        // for photons not hitting anything.
+        do {
+            V3 light_origin = light.shape->getPointOnSurface();
+            ray = Ray(light_origin, light.shape->getNormal(light_origin));
+
+            V3 flux = V3(1.0L, 1.0L, 1.0L);
+        } while (trace_photon(ray, 0, light.material->emission) == 0);
+    }
+
+    int trace_photon(Ray ray, int hit_count, V3 flux) {
+        if (hit_count > 4) {
+            return hit_count;
+        }
 
         Body *hit = NULL;
         double mint = DBL_MAX;
@@ -587,16 +649,47 @@ public:
         }
 
         if (hit == NULL) {
-            if (bounces == 0) {
-                // Complete miss, retrace.
-                return trace_photon();
-            }
-            return;
+            return hit_count;
         }
+
+        hit_count++;
+
+        V3 point = ray.origin.add(ray.direction.muls(mint));
+
+        photon_hits.push_back(PhotonHit(point, flux, ray.direction));
+
+        V3 absorption = V3(2.0L, 2.0L, 2.0L).isub(hit->material->diffuse.add(hit->material->specular));
+
+        double diffuse_decision = hit->material->diffuse.total();
+        double specular_decision = hit->material->specular.total();
+
+        double decision = unifRand(0, 6.0L);
+
+        if (decision < (diffuse_decision + specular_decision)) {
+            // Absorbed.
+            return hit_count;
+        }
+
+        V3 normal = hit->shape->getNormal(point);
+        V3 direction = hit->material->bounce(ray, normal);
+        if (direction.dot(ray.direction) > 0.0f) {
+            // If the ray is refracted move the intersection point a
+            // bit in.
+            point = ray.origin.add(ray.direction.muls(mint * 1.0000001L));
+            // point = ray.origin.add(ray.direction.muls(mint * 1.00001L));
+        } else {
+            // Otherwise move it out to prevent problems with floating
+            // point accuracy.
+            point = ray.origin.add(ray.direction.muls(mint * 0.9999999L));
+            // point = ray.origin.add(ray.direction.muls(mint * 0.99999L));
+        }
+
+        Ray newray = Ray(point, direction);
+        return trace_photon(newray, hit_count, flux);
     }
 
     V3 trace(Ray ray, int n) {
-        if (n > 4) {
+        if (n > 40) {
             return V3();
         }
 
@@ -605,6 +698,11 @@ public:
         for (int i = 0; i < scene.body_count; i++) {
             Body *candidate = scene.objects[i];
             double t = candidate->shape->intersect(ray);
+
+            // if (candidate->name == "right") {
+            //     cout << "t on right: " << t << endl;
+            // }
+
             if ((t > 0) && (t <= mint)) {
                 mint = t;
                 hit = candidate;
@@ -612,6 +710,7 @@ public:
         }
 
         if (hit == NULL) {
+            // cout << "Miss after " << n << " bounces: " << ray << endl;
             return V3();
         }
 
@@ -619,16 +718,27 @@ public:
         V3 normal = hit->shape->getNormal(point);
         V3 direction = hit->material->bounce(ray, normal);
         if (direction.dot(ray.direction) > 0.0f) {
-            // if the ray is refractedmove the intersection point a bit in
+            // if the ray is refracted move the intersection point a bit in
             point = ray.origin.add(ray.direction.muls(mint*1.0000001L));
+            // point = ray.origin.add(ray.direction.muls(mint*1.00001L));
         } else {
             // otherwise move it out to prevent problems with floating point
             // accuracy
             point = ray.origin.add(ray.direction.muls(mint*0.9999999L));
+            // point = ray.origin.add(ray.direction.muls(mint*0.99999L));
+        }
+
+        if (hit->name == "Ball Light") {
+            // cout << "Ball hit\n";
+            return hit->material->color.add(hit->material->emission);
         }
 
         Ray newray = Ray(point, direction);
-        return trace(newray, n+1).mul(hit->material->color).add(hit->material->emission);
+        V3 value = trace(newray, n+1).mul(hit->material->color).add(hit->material->emission);
+
+        // cout << "Ended after hitting: " << hit->name << ", " << ray << endl;
+
+        return value;
     }
 };
 
@@ -659,8 +769,11 @@ void save(V3* buffer, int samples, int width, int height) {
     myfile.close();
 }
 
-void worker(int worker_num, int iterations, Scene* scene, V3* buffer) {
+void worker(int worker_num, int photon_count, int iterations, Scene* scene, V3* buffer) {
     Renderer renderer = Renderer(*scene);
+
+    // TODO When it's ready.
+    renderer.trace_all_photons(photon_count);
 
     for (int i = 0; i < iterations; i++) {
         cout << "Worker " << worker_num << " iteration " << i << endl;
@@ -694,7 +807,8 @@ int main(int argc, const char* argv[]) {
     int width = strtol(argv[1], NULL, 10);
     int height = strtol(argv[2], NULL, 10);
     int iterations = strtol(argv[3], NULL, 10);
-    int thread_count = strtol(argv[4], NULL, 10);
+    int photon_count = strtol(argv[4], NULL, 10);
+    int thread_count = strtol(argv[5], NULL, 10);
 
     Scene scene;
     scene.width = width;
@@ -712,45 +826,46 @@ int main(int argc, const char* argv[]) {
 
     Sphere glass_sphere = Sphere(V3(1.0L, 2.0L, 0.0L), 0.5L);
     Glass glass_mat = Glass(V3(1.00L, 1.00L, 1.00L), 1.5L, 0.1L);
-    Body glass = Body(&glass_sphere, &glass_mat);
+    Body glass = Body("glass", &glass_sphere, &glass_mat);
     Sphere chrome_sphere = Sphere(V3(-1.1L, 2.8L, 0.0L), 0.5L);
     Chrome chrome_mat = Chrome(V3(0.8L, 0.8L, 0.8L));
-    Body chrome = Body(&chrome_sphere, &chrome_mat);
+    Body chrome = Body("chrome", &chrome_sphere, &chrome_mat);
 
     Sphere green_sphere = Sphere(V3(-0.15L, 1.55L, -0.4L), 0.1L);
     Glass green_mat = Glass(V3(0.0L, 0.8L, 0.0L), 1.0L, 0.2L);
-    Body green = Body(&green_sphere, &green_mat);
+    Body green = Body("green", &green_sphere, &green_mat);
 
     Sphere red_sphere = Sphere(V3(0.0L, 1.187867L, -0.4L), 0.1L);
     Glass red_mat = Glass(V3(0.8, 0.0, 0.0), 1.0, 0.2);
-    Body red = Body(&red_sphere, &red_mat);
+    Body red = Body("red", &red_sphere, &red_mat);
 
     Sphere blue_sphere = Sphere(V3(0.15, 1.55, -0.4), 0.1);
     Glass blue_mat = Glass(V3(0.0, 0.0, 0.8), 1.0, 0.2);
-    Body blue = Body(&blue_sphere, &blue_mat);
+    Body blue = Body("blue", &blue_sphere, &blue_mat);
 
     Sphere pyramid_sphere = Sphere(V3(0.0L, 1.4L, -0.28L), 0.1L);
     Glass pyramid_mat = Glass(V3(1.00L, 1.00L, 1.00L), 1.5L, 0.1L);
-    Body pyramid = Body(&pyramid_sphere, &pyramid_mat);
+    Body pyramid = Body("pyramid", &pyramid_sphere, &pyramid_mat);
 
     Material floor_mat = Material(V3(0.9L, 0.9L, 0.9L));
     Rectangle floor_rectangle = Rectangle(V3(-1.9L, 4.5L, -0.5L), V3(1.9L, 4.5L, -0.5L), V3(1.9L, -2.5L, -0.5L), V3(-1.9L, -2.5L, -0.5L));
-    Body floor = Body(&floor_rectangle, &floor_mat);
+    Body floor = Body("floor", &floor_rectangle, &floor_mat);
     Material back_mat = Material(V3(0.9L, 0.9L, 0.9L));
     Rectangle back_rectangle = Rectangle(V3(-1.9L, 4.5L, 2.5L), V3(1.9L, 4.5L, 2.5L), V3(1.9L, 4.5L, -0.5L), V3(-1.9L, 4.5L, -0.5L));
-    Body back = Body(&back_rectangle, &back_mat);
+    Body back = Body("back", &back_rectangle, &back_mat);
     Material left_mat = Material(V3(0.9L, 0.5L, 0.5L));
-    Rectangle left_rectangle = Rectangle(V3(-1.9L, -2.5L, 2.5L), V3(-1.9L, 4.5L, 2.5L), V3(-1.9L, 4.5L, -0.5L), V3(-1.9L, -2.5L, 2.5L));
-    Body left = Body(&left_rectangle, &left_mat);
+    Rectangle left_rectangle = Rectangle(V3(-1.9L, -2.5L, 2.5L), V3(-1.9L, 4.5L, 2.5L), V3(-1.9L, 4.5L, -0.5L), V3(-1.9L, -2.5L, -0.5L));
+    Body left = Body("left", &left_rectangle, &left_mat);
     Material right_mat = Material(V3(0.5L, 0.5L, 0.9L));
     Rectangle right_rectangle = Rectangle(V3(1.9L, 4.5L, 2.5L), V3(1.9L, -2.5L, 2.5L), V3(1.9L, -2.5L, -0.5L), V3(1.9L, 4.5L, -0.5L));
-    Body right = Body(&right_rectangle, &right_mat);
+    Body right = Body("right", &right_rectangle, &right_mat);
     Material top_mat = Material(V3(0.9L, 0.9L, 0.9L));
     Rectangle top_rectangle = Rectangle(V3(1.9L, 4.5L, 2.5L), V3(-1.9L, 4.5L, 2.5L), V3(-1.9L, -2.5L, 2.5L), V3(1.9L, -2.5L, 2.5L));
-    Body top = Body(&top_rectangle, &top_mat);
+    Body top = Body("top", &top_rectangle, &top_mat);
     Material front_mat = Material(V3(0.9L, 0.9L, 0.9L));
-    Rectangle front_rectangle = Rectangle(V3(1.9L, 4.5L, 2.5L), V3(-1.9L, 4.5L, 2.5L), V3(-1.9L, 4.5L, -0.5L), V3(1.9L, 4.5L, -0.5L));
-    Body front = Body(&front_rectangle, &front_mat);
+    // Rectangle front_rectangle = Rectangle(V3(1.9L, 4.5L, 2.5L), V3(-1.9L, 4.5L, 2.5L), V3(-1.9L, 4.5L, -0.5L), V3(1.9L, 4.5L, -0.5L));
+    Rectangle front_rectangle = Rectangle(V3(1.9L, -2.5L, 2.5L), V3(-1.9L, -2.5L, 2.5L), V3(-1.9L, -2.5L, -0.5L), V3(1.9L, -2.5L, -0.5L));
+    Body front = Body("front", &front_rectangle, &front_mat);
 
     // Material floor_mat = Material(V3(0.9L, 0.9L, 0.9L));
     // Plane floor_plane = Plane(V3(0.0L, 3.5L, -0.5L), V3(0.0L, 0.0L, 1.0L));
@@ -770,7 +885,7 @@ int main(int argc, const char* argv[]) {
     // Rectangle top_light_box = Rectangle(V3(-1.4L, 3.5L, 2.5L), V3(1.4L, 3.5L, 2.5L), V3(1.4L, -2.5L, 2.5L), V3(-1.4L, -2.5L, 2.5L));
     Material top_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(2.0L, 1.87L, 1.69L), 12.0L);
     // Material top_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(1.1L, 0.935L, 0.845L));
-    Body top_light = Body(&top_light_box, &top_light_mat);
+    Body top_light = Body("top light", &top_light_box, &top_light_mat);
     // Plane top_light_plane = Plane(V3(0.0L, 0.0L, 2.5L), V3(0.0L, 0.0L, -1.0L));
     // Material top_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(1.6L, 1.47L, 1.29L));
     // // Material top_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(1.0L, 0.87L, 0.69L));
@@ -785,52 +900,54 @@ int main(int argc, const char* argv[]) {
     // Material top_left_divider_mat = Glass(V3(0.0L, 0.8L, 0.0L), 1.0L, 0.2L);
     // Body top_left_divider = Body(&top_left_divider_plane, &top_left_divider_mat);
 
-    Material ball_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(2.0L, 1.87L, 1.69L), 8.0L);
+    // Material ball_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(2.0L, 1.87L, 1.69L), 8.0L);
+    Material ball_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(20.0L, 18.7L, 16.9L), 8.0L);
 
     Sphere right_light_sphere = Sphere(V3(1.9L, 3.625L, 2.1L), 0.1L);
     //Material right_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(2.0L, 1.87L, 1.69L), 8);
-    Body right_light = Body(&right_light_sphere, &ball_light_mat);
+    Body right_light = Body("Ball Light", &right_light_sphere, &ball_light_mat);
 
     Sphere left_light_sphere = Sphere(V3(-1.9L, 3.625L, 2.1L), 0.1L);
     //Material left_light_mat = Material(V3(0.0L, 0.0L, 0.0L), V3(2.0L, 1.87L, 1.69L));
-    Body left_light = Body(&left_light_sphere, &ball_light_mat);
+    Body left_light = Body("Ball Light", &left_light_sphere, &ball_light_mat);
 
     Sphere right2_light_sphere = Sphere(V3(1.9L, 2.75L, 2.1L), 0.1L);
-    Body right2_light = Body(&right2_light_sphere, &ball_light_mat);
+    Body right2_light = Body("Ball Light", &right2_light_sphere, &ball_light_mat);
     Sphere left2_light_sphere = Sphere(V3(-1.9L, 2.75L, 2.1L), 0.1L);
-    Body left2_light = Body(&left2_light_sphere, &ball_light_mat);
+    Body left2_light = Body("Ball Light", &left2_light_sphere, &ball_light_mat);
     Sphere right3_light_sphere = Sphere(V3(1.9L, 1.875L, 2.1L), 0.1L);
-    Body right3_light = Body(&right3_light_sphere, &ball_light_mat);
+    Body right3_light = Body("Ball Light", &right3_light_sphere, &ball_light_mat);
     Sphere left3_light_sphere = Sphere(V3(-1.9L, 1.875L, 2.1L), 0.1L);
-    Body left3_light = Body(&left3_light_sphere, &ball_light_mat);
+    Body left3_light = Body("Ball Light", &left3_light_sphere, &ball_light_mat);
     Sphere right4_light_sphere = Sphere(V3(1.9L, 1.0L, 2.1L), 0.1L);
-    Body right4_light = Body(&right4_light_sphere, &ball_light_mat);
+    Body right4_light = Body("Ball Light", &right4_light_sphere, &ball_light_mat);
     Sphere left4_light_sphere = Sphere(V3(-1.9L, 1.0L, 2.1L), 0.1L);
-    Body left4_light = Body(&left4_light_sphere, &ball_light_mat);
+    Body left4_light = Body("Ball Light", &left4_light_sphere, &ball_light_mat);
     Sphere right5_light_sphere = Sphere(V3(1.9L, 0.125L, 2.1L), 0.1L);
-    Body right5_light = Body(&right5_light_sphere, &ball_light_mat);
+    Body right5_light = Body("Ball Light", &right5_light_sphere, &ball_light_mat);
     Sphere left5_light_sphere = Sphere(V3(-1.9L, 0.125L, 2.1L), 0.1L);
-    Body left5_light = Body(&left5_light_sphere, &ball_light_mat);
+    Body left5_light = Body("Ball Light", &left5_light_sphere, &ball_light_mat);
     Sphere right6_light_sphere = Sphere(V3(1.9L, -0.75L, 2.1L), 0.1L);
-    Body right6_light = Body(&right6_light_sphere, &ball_light_mat);
+    Body right6_light = Body("Ball Light", &right6_light_sphere, &ball_light_mat);
     Sphere left6_light_sphere = Sphere(V3(-1.9L, -0.75L, 2.1L), 0.1L);
-    Body left6_light = Body(&left6_light_sphere, &ball_light_mat);
+    Body left6_light = Body("Ball Light", &left6_light_sphere, &ball_light_mat);
     Sphere right7_light_sphere = Sphere(V3(1.9L, -1.625, 2.1L), 0.1L);
-    Body right7_light = Body(&right7_light_sphere, &ball_light_mat);
+    Body right7_light = Body("Ball Light", &right7_light_sphere, &ball_light_mat);
     Sphere left7_light_sphere = Sphere(V3(-1.9L, -1.625L, 2.1L), 0.1L);
-    Body left7_light = Body(&left7_light_sphere, &ball_light_mat);
+    Body left7_light = Body("Ball Light", &left7_light_sphere, &ball_light_mat);
 
     Sphere back_light_sphere = Sphere(V3(-0.63333L, 4.5L, 2.1L), 0.1L);
-    Body back_light = Body(&back_light_sphere, &ball_light_mat);
+    // Sphere back_light_sphere = Sphere(V3(-0.63333L, 4.5L, 2.1L), 0.6L);
+    Body back_light = Body("Ball Light", &back_light_sphere, &ball_light_mat);
 
     Sphere back2_light_sphere = Sphere(V3(0.63333L, 4.5L, 2.1L), 0.1L);
-    Body back2_light = Body(&back2_light_sphere, &ball_light_mat);
+    Body back2_light = Body("Ball Light", &back2_light_sphere, &ball_light_mat);
 
     Sphere front_light_sphere = Sphere(V3(-0.63333L, -2.5L, 2.1L), 0.1L);
-    Body front_light = Body(&front_light_sphere, &ball_light_mat);
+    Body front_light = Body("Ball Light", &front_light_sphere, &ball_light_mat);
 
     Sphere front2_light_sphere = Sphere(V3(0.63333L, -2.5L, 2.1L), 0.1L);
-    Body front2_light = Body(&front2_light_sphere, &ball_light_mat);
+    Body front2_light = Body("Ball Light", &front2_light_sphere, &ball_light_mat);
 
     // Plane top_right_divider_plane = Plane(V3(1.4L, 4.0L, 2.0L), V3(-1.0L, -1.0L, -1.0L).normalize());
     // Material top_right_divider_mat = Glass(V3(0.8L, 0.0L, 0.0L), 1.0L, 0.2L);
@@ -858,7 +975,7 @@ int main(int argc, const char* argv[]) {
 
     boost::thread** threads = new boost::thread*[thread_count];
     for (int i = 0; i < thread_count; i++) {
-        threads[i] = new boost::thread(boost::bind(&worker, i, (double)iterations / (double)thread_count, &scene, buffer));
+        threads[i] = new boost::thread(boost::bind(&worker, i, photon_count, (double)iterations / (double)thread_count, &scene, buffer));
     }
 
     for (int i = 0; i < thread_count; i++) {
